@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>日本犯罪ニュースマップ · Japan Crime News Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+:root{--bg:#eef0f3;--panel:#fff;--ink:#1c2233;--mute:#667085;--line:#d9dde5;--sea:#dfe6ee;--hl:#c8932b;
+ --s0:#f4f6fa;--s1:#cfd9ee;--s2:#9db3de;--s3:#5f7fc4;--s4:#2f4f9a;--s5:#16295f}
+@media(prefers-color-scheme:dark){:root{--bg:#10141f;--panel:#171c2b;--ink:#e8ebf3;--mute:#98a1b5;--line:#2a3147;--sea:#0d111b;--hl:#e0b04f;
+ --s0:#1b2236;--s1:#27345a;--s2:#35509a;--s3:#4f73c9;--s4:#7f9be0;--s5:#b5c6f0}}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{font-family:"Zen Kaku Gothic New",system-ui,sans-serif;background:var(--bg);color:var(--ink);display:grid;grid-template-columns:1fr 400px;grid-template-rows:auto 1fr;
+ padding-top:env(safe-area-inset-top,0)}
+header{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:.5rem 1.25rem;padding:.7rem 1rem;border-bottom:1px solid var(--line);background:var(--panel)}
+h1{font-size:1.1rem;margin:0;font-weight:700}
+h1 small{font-weight:400;color:var(--mute);margin-left:.5rem}
+.sp{flex:1}
+.chips{display:flex;flex-wrap:wrap;gap:.35rem}
+.chip,select{font:inherit;font-size:.82rem;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:999px;padding:.25rem .7rem;cursor:pointer}
+.chip[aria-pressed=true]{background:var(--s5);color:var(--panel);border-color:var(--s5)}
+select{border-radius:6px}
+:focus-visible{outline:2px solid var(--hl);outline-offset:2px}
+#map{background:var(--sea);min-height:300px}
+aside{background:var(--panel);border-left:1px solid var(--line);overflow:auto;padding:1rem}
+aside h2{margin:0 0 .15rem;font-size:1.25rem}
+aside .ro{color:var(--mute);font-size:.9rem;margin-bottom:.6rem}
+.meta{color:var(--mute);font-size:.8rem;margin-bottom:.8rem}
+.item{display:block;padding:.65rem 0;border-top:1px solid var(--line);color:inherit;text-decoration:none}
+.item:hover .t{text-decoration:underline}
+.t{font-weight:500;line-height:1.45}
+.m{font-size:.78rem;color:var(--mute);margin-top:.2rem}
+.cat{display:inline-block;border:1px solid var(--line);border-radius:4px;padding:0 .35rem;margin-right:.4rem;color:var(--ink)}
+.empty{color:var(--mute);padding:1rem 0}
+button.link{font:inherit;background:none;border:0;color:var(--s4);cursor:pointer;padding:0;text-decoration:underline}
+.lbl{background:none;border:0;box-shadow:none;text-align:center;line-height:1.15;color:var(--ink);padding:0;pointer-events:none;text-shadow:0 0 3px var(--sea),0 0 3px var(--sea)}
+.lbl:before{display:none}
+.lbl .j{font-size:11px;font-weight:700}
+.lbl .r{font-size:9px;color:var(--mute);display:none}
+.z6 .lbl .r{display:block}
+.legend{background:var(--panel);padding:.4rem .6rem;border:1px solid var(--line);border-radius:6px;font-size:.75rem;color:var(--ink)}
+.legend i{display:inline-block;width:14px;height:10px;margin-right:2px;vertical-align:middle}
+@media(max-width:820px){body{grid-template-columns:1fr;grid-template-rows:auto 55vh auto}aside{border-left:0;border-top:1px solid var(--line)}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header>
+  <h1>日本犯罪ニュースマップ<small>Japan Crime News Map</small></h1>
+  <div class="chips" id="chips" role="group" aria-label="Category"></div>
+  <span class="sp"></span>
+  <select id="period" aria-label="Period">
+    <option value="1">Last 24 h</option><option value="3">Last 3 days</option><option value="7" selected>Last 7 days</option>
+  </select>
+</header>
+<div id="map"></div>
+<aside id="side"></aside>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+// 日本語名 → rōmaji (macrons, Hepburn)
+const ROMAJI={"北海道":"Hokkaidō","青森県":"Aomori-ken","岩手県":"Iwate-ken","宮城県":"Miyagi-ken","秋田県":"Akita-ken","山形県":"Yamagata-ken","福島県":"Fukushima-ken","茨城県":"Ibaraki-ken","栃木県":"Tochigi-ken","群馬県":"Gunma-ken","埼玉県":"Saitama-ken","千葉県":"Chiba-ken","東京都":"Tōkyō-to","神奈川県":"Kanagawa-ken","新潟県":"Niigata-ken","富山県":"Toyama-ken","石川県":"Ishikawa-ken","福井県":"Fukui-ken","山梨県":"Yamanashi-ken","長野県":"Nagano-ken","岐阜県":"Gifu-ken","静岡県":"Shizuoka-ken","愛知県":"Aichi-ken","三重県":"Mie-ken","滋賀県":"Shiga-ken","京都府":"Kyōto-fu","大阪府":"Ōsaka-fu","兵庫県":"Hyōgo-ken","奈良県":"Nara-ken","和歌山県":"Wakayama-ken","鳥取県":"Tottori-ken","島根県":"Shimane-ken","岡山県":"Okayama-ken","広島県":"Hiroshima-ken","山口県":"Yamaguchi-ken","徳島県":"Tokushima-ken","香川県":"Kagawa-ken","愛媛県":"Ehime-ken","高知県":"Kōchi-ken","福岡県":"Fukuoka-ken","佐賀県":"Saga-ken","長崎県":"Nagasaki-ken","熊本県":"Kumamoto-ken","大分県":"Ōita-ken","宮崎県":"Miyazaki-ken","鹿児島県":"Kagoshima-ken","沖縄県":"Okinawa-ken"};
+const CATS={all:["全て","All"],murder:["殺人","Murder"],robbery:["強盗","Robbery"],assault:["傷害","Assault"],arson:["放火","Arson"],drugs:["薬物","Drugs"],fraud:["詐欺","Fraud"],theft:["窃盗","Theft"],traffic:["交通","Traffic"],other:["逮捕","Arrests"]};
+const GEO="https://raw.githubusercontent.com/dataofjapan/land/master/japan.geojson";
+const st={cat:"all",days:7,pref:null,items:[],updated:null};
+const $=s=>document.querySelector(s), esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const label=p=>`${p}（${ROMAJI[p]||""}）`.replace("（）","");
+
+const map=L.map("map",{zoomSnap:.25,minZoom:4,attributionControl:true});
+map.attributionControl.addAttribution("Prefecture shapes: dataofjapan/land");
+let layer,counts={};
+
+function visible(ignorePref){
+  const since=Date.now()-st.days*864e5;
+  return st.items.filter(i=>new Date(i.time)>=since&&(st.cat==="all"||i.category===st.cat)&&(ignorePref||!st.pref||i.prefecture===st.pref));
+}
+function color(n,max){if(!n)return "var(--s0)";const r=n/max;return r>.75?"var(--s5)":r>.5?"var(--s4)":r>.25?"var(--s3)":r>.1?"var(--s2)":"var(--s1)"}
+function styleFor(f){
+  const n=counts[f.properties.nam_ja]||0,max=Math.max(1,...Object.values(counts));
+  const sel=f.properties.nam_ja===st.pref;
+  return{fillColor:color(n,max),fillOpacity:1,color:sel?"var(--hl)":"var(--panel)",weight:sel?3:.8};
+}
+function refresh(){
+  counts={};visible(true).forEach(i=>{if(i.prefecture)counts[i.prefecture]=(counts[i.prefecture]||0)+1});
+  layer&&layer.setStyle(styleFor);
+  render();
+}
+function render(){
+  const list=visible(false),side=$("#side");
+  const head=st.pref?`<h2>${esc(st.pref)}</h2><div class="ro">（${esc(ROMAJI[st.pref]||"")}）</div><button class="link" id="clear">Show all Japan</button>`
+    :`<h2>日本全国</h2><div class="ro">（Nihon zenkoku · All Japan）</div>`;
+  const unl=!st.pref?visible(true).filter(i=>!i.prefecture).length:0;
+  const upd=st.updated?new Date(st.updated).toLocaleString():"never";
+  side.innerHTML=head+`<div class="meta">${list.length} stories · updated ${esc(upd)}${unl?` · ${unl} without a located prefecture`:""}</div>`+
+    (list.length?list.slice(0,200).map(i=>`<a class="item" href="${esc(i.link)}" target="_blank" rel="noopener">
+      <div class="t">${esc(i.title)}</div>
+      <div class="m"><span class="cat">${CATS[i.category][0]} ${CATS[i.category][1]}</span>${esc(i.source)} · ${new Date(i.time).toLocaleString([],{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"})}${!st.pref&&i.prefecture?` · ${esc(label(i.prefecture))}`:""}</div></a>`).join("")
+      :`<div class="empty">No stories yet. If this is a fresh repo, run the “Update news” workflow once in the Actions tab.</div>`);
+  const c=$("#clear");c&&(c.onclick=()=>{st.pref=null;refresh()});
+}
+
+$("#chips").innerHTML=Object.entries(CATS).map(([k,v])=>`<button class="chip" data-k="${k}" aria-pressed="${k==="all"}">${v[0]} ${v[1]}</button>`).join("");
+$("#chips").onclick=e=>{const b=e.target.closest(".chip");if(!b)return;st.cat=b.dataset.k;
+  document.querySelectorAll(".chip").forEach(x=>x.setAttribute("aria-pressed",x===b));refresh()};
+$("#period").onchange=e=>{st.days=+e.target.value;refresh()};
+
+Promise.all([
+  fetch("data/news.json?t="+Date.now()).then(r=>r.json()).catch(()=>({items:[]})),
+  fetch(GEO).then(r=>r.json())
+]).then(([news,geo])=>{
+  st.items=news.items||[];st.updated=news.updated;
+  layer=L.geoJSON(geo,{style:styleFor,onEachFeature:(f,l)=>{
+    const p=f.properties.nam_ja;
+    l.on("click",()=>{st.pref=st.pref===p?null:p;refresh()});
+    l.bindTooltip(`<div class="j">${esc(p)}</div><div class="r">（${esc(ROMAJI[p]||"")}）</div>`,{permanent:true,direction:"center",className:"lbl"})
+     .openTooltip(l.getBounds().getCenter());
+  }}).addTo(map);
+  map.fitBounds(layer.getBounds(),{padding:[10,10]});
+  const zc=()=>map.getContainer().classList.toggle("z6",map.getZoom()>=6);map.on("zoomend",zc);zc();
+  const lg=L.control({position:"bottomleft"});lg.onAdd=()=>{const d=L.DomUtil.create("div","legend");
+    d.innerHTML="Fewer "+["s1","s2","s3","s4","s5"].map(s=>`<i style="background:var(--${s})"></i>`).join("")+" More";return d};lg.addTo(map);
+  refresh();
+}).catch(err=>{$("#side").innerHTML=`<div class="empty">Could not load the map data: ${esc(err.message)}</div>`});
+</script>
+</body>
+</html>
