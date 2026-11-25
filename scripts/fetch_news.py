@@ -15,12 +15,35 @@ FEEDS = [
     ("NHK", "https://www3.nhk.or.jp/rss/news/cat3.xml"),
     ("Yahoo!ニュース 国内", "https://news.yahoo.co.jp/rss/topics/domestic.xml"),
     ("Yahoo!ニュース 地域", "https://news.yahoo.co.jp/rss/topics/local.xml"),
-    ("毎日新聞", "https://mainichi.jp/rss/etc/mainichi-flash.rss"),
     ("朝日新聞", "https://www.asahi.com/rss/asahi/national.rdf"),
+    ("毎日新聞", "https://mainichi.jp/rss/etc/mainichi-flash.rss")
+
+("警察庁", "https://www.npa.go.jp/newlyarrived/rss20.xml")
+
+("時事レーダー", "https://jijiradar.com/?feed=rss2")
+
+("The Japan Times Crime & Legal", "https://www.japantimes.co.jp/feed/")
+
+("NHK NEWS", "https://www3.nhk.or.jp/rss/news/cat0.xml")
+
+("共同通信", "https://nordot.app/-/feed/rss")
+
+("読売新聞", "https://www.yomiuri.co.jp/rss/")
+
+("朝日新聞", "https://www.asahi.com/rss/asahi/newsheadlines.rdf")
+
+("産経新聞", "https://www.sankei.com/rss/news/flash.xml")
+    ("警察庁", "https://www.npa.go.jp/newlyarrived/rss20.xml")
+
+("時事レーダー", "https://jijiradar.com/?feed=rss2")
+
+("毎日新聞", "https://mainichi.jp/rss/etc/mainichi-flash.rss")
+
+("The Japan Times Crime & Legal", "https://www.japantimes.co.jp/feed/")
+    
 ]
 
 PREFS = ["北海道","青森県","岩手県","宮城県","秋田県","山形県","福島県","茨城県","栃木県","群馬県","埼玉県","千葉県","東京都","神奈川県","新潟県","富山県","石川県","福井県","山梨県","長野県","岐阜県","静岡県","愛知県","三重県","滋賀県","京都府","大阪府","兵庫県","奈良県","和歌山県","鳥取県","島根県","岡山県","広島県","山口県","徳島県","香川県","愛媛県","高知県","福岡県","佐賀県","長崎県","熊本県","大分県","宮崎県","鹿児島県","沖縄県"]
-
 # Hledané výrazy -> prefektura. Delší výrazy se hledají první a zamaskují se,
 # takže "東京都" nikdy nespadne pod "京都".
 NEEDLES = {p: p for p in PREFS}
